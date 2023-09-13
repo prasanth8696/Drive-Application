@@ -1,7 +1,8 @@
 import os
-from api import upload_files, cloneFolder,cloneFile,getAccountInfo
+from api import uploadFile, uploadFolder, cloneFolder, cloneFile, getAccountInfo
 
-def driveInfo() :
+
+def driveInfo():
     getAccountInfo()
 
 
@@ -11,13 +12,10 @@ def driveUpload():
         print("Invalid path... ")
         return
     else:
-        dirname = None
-        print("if you want custom folder enter 1 ")
-        ch = int(input())
-        if ch == 1:
-            dirname = input("Enter custom dirname... ")
-
-        upload_files(path=path, dirName=dirname)
+        if os.path.isfile(path):
+            uploadFile(path=path)
+        if os.path.isdir(path):
+            uploadFolder(path=path)
 
 
 def driveDownload():
@@ -28,13 +26,13 @@ def driveClone():
     file_type = None
     file_link = input("Enter Drive Link ")
 
-    if file_link.find("folders") != -1 :
+    if file_link.find("folders") != -1:
         file_id = file_link.split("/")[-1]
         cloneFolder(file_id)
 
     elif file_link.find("file") != -1:
-         file_id = file_link.split("/")[-2]
-         cloneFile(file_id)
+        file_id = file_link.split("/")[-2]
+        cloneFile(file_id)
 
 
 while True:
@@ -54,13 +52,13 @@ while True:
     except ValueError:
         print("Invalid input")
 
-    if ch == 1 :
+    if ch == 1:
         driveInfo()
-    elif ch == 2 :
+    elif ch == 2:
         driveUpload()
-    elif ch == 3 :
+    elif ch == 3:
         driveDownload()
-    elif ch == 4 :
+    elif ch == 4:
         driveClone()
     else:
         print("Invalid input...")

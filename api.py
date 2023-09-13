@@ -1,12 +1,11 @@
 import os
 import mimetypes
-import concurrent.futures
 from pprint import pprint
 from handler import Create_Service
 from googleapiclient.http import MediaFileUpload
 
 
-CRENDS_FILE = "credentials.json"
+CRENDS_FILE = "/data/data/com.termux/files/home/newproject/credentials.json"
 
 API_NAME = "drive"
 
@@ -26,6 +25,22 @@ def convert_bytes_to_megabytes(data_size):
 
 def convert_bytes_to_gigabytes(data_size):
     return data_size / (1024**3)
+
+def clear() :
+  clear_cmd =  'cls' if os.name == 'nt' else 'clear'
+  os.system(clear_cmd)
+
+def picInfo(percent) :
+    approx_percent = str(percent).split('.')[0]
+
+    progress = ["[□  □ □ □ □ □ □ □ □ □]","[■ □ □ □ □ □ □ □ □ □]","[■ ■ □ □ □ □ □ □ □ □]", "[■ ■ ■ □ □ □ □ □ □ □]", "[■ ■ ■ ■ □ □ □ □ □ □]", "[■ ■ ■ ■ ■ □ □ □ □ □]", "[■ ■ ■ ■ ■ ■ □ □ □ □]", "[■ ■ ■ ■ ■ ■ ■ □ □ □]", "[■ ■ ■ ■ ■ ■ ■ ■ □ □]", "[■ ■ ■ ■ ■ ■ ■ ■ ■ □]", "[■ ■ ■ ■ ■ ■ ■ ■ ■ ■]"] 
+
+    if len(approx_percent) == 1 :
+        return progress[0] + "  {:.2f} %".format(percent)
+    if len(approx_percent) == 2 :
+        return progress[int(approx_percent[0])] + "  {:.2f} %".format(percent)
+    if len(approx_percent) == 3 :
+        return progress[-1] + "  {:.2f} %".format(percent)
 
 
 def search(service, query):
@@ -55,7 +70,7 @@ def search(service, query):
     return result
 
 
-def upload_progress(gfile, file):
+def upload_progress(gfile):
     response = None
 
     while response is None:
@@ -68,34 +83,41 @@ def upload_progress(gfile, file):
 
             print(f"File Uploaded {data_size}%")
             time.sleep(2)
-        if file:
-            print(f"{file} Uploaded successfully")  # temp
+        if gfile:
+            print(f"{gfile['name']} Uploaded successfully")  # temp
 
 
-#Getting information
+# Getting information
 
-def getAccountInfo() :
+
+def getAccountInfo():
     service = Create_Service(CRENDS_FILE, API_NAME, API_VERSION, SCOPES)
     accInfo = service.about().get(fields="*").execute()
 
     storageQuota = accInfo["storageQuota"]
+    user = accInfo['user']
 
-    used = convert_bytes_to_gigabytes(int(storageQuota["usage"])) 
+    used = convert_bytes_to_gigabytes(int(storageQuota["usage"]))
 
     limit = convert_bytes_to_gigabytes(int(storageQuota["limit"]))
 
-    trashUsedInDrive = convert_bytes_to_gigabytes(int(storageQuota["usageInDriveTrash"]))
+    trashUsedInDrive = convert_bytes_to_gigabytes(
+        int(storageQuota["usageInDriveTrash"])
+    )
 
     free = limit - used
+    clear()
 
-    print("Used : {:.2f}GB of {}GB".format(used,limit) )
-    print("Free : {:.2f}GB of {}GB".format(free,limit))
-    print("Trash : {:.2f}GB of {:.2f}GB\n".format(trashUsedInDrive,used))
-    print("Storage Used {:.2f}%".format((used/limit)*100))
+    print(f"Owner : {user['displayName']}")
+    print(f"Email Address : {user['emailAddress']}\n")
+    print("$$$$STORAGE DETAILS$$$$\n")
+    print(picInfo((used/limit) * 100) + "\n")
+    print("Used : {:.2f}GB of {}GB".format(used, limit))
+    print("Free : {:.2f}GB of {}GB".format(free, limit))
+    print("Trash : {:.2f}GB of {:.2f}GB\n".format(trashUsedInDrive, used))
+    print("Storage Used {:.2f}%".format((used / limit) * 100))
 
-    print("Storage Free {:.2f}%\n".format((free/limit)*100))
-
-
+    print("Storage Free {:.2f}%\n".format((free / limit) * 100))
 
 
 # Upload files
@@ -103,72 +125,55 @@ def getAccountInfo() :
 
 def uploadFile(path, rootFolderId=None):
     service = Create_Service(CRENDS_FILE, API_NAME, API_VERSION, SCOPES)
-    """
 
-    # create folder
+    fileMetadata = {
+        "name": os.path.split(path)[-1],
+        "parents": [root_id] if rootFolderId is None else [rootFolderId],
+    }
+
+    mimetype = mimetypes.guess_type(path)[0]
+
+    media = MediaFileUpload(path, mimetype=mimetype, resumable=True)
+    gfile = (
+        service.files()
+        .create(body=fileMetadata, media_body=media, fields="id,name").execute()
+        )
+    
+    print(f"{gfile['name']} uploaded successfully")
+    return
+
+
+def uploadFolder(path, dirName=None):
+
+    service = Create_Service(CRENDS_FILE, API_NAME, API_VERSION, SCOPES)
+
     fileMetadata = {
         "name": os.path.split(path)[-1] if dirName == None else dirName,
         "mimeType": "application/vnd.google-apps.folder",
         "parents": [root_id] if dirName == None else [],
     }
-
     file = service.files().create(body=fileMetadata, fields="id").execute()
 
-    # get the folder id
     folder_id = file.get("id")
 
-"""
+    resultFiles = os.listdir(path)
+    # need to add env vars
+    nestedFolderUpload = False
 
-        fileMetadata = {"name": os.path.split(path)[-1], "parents": [root_id] if rootFolderId is None else rootFolderId }
-        mimetype = mimetypes.guess_type(path)[0]
-        print(mimetype)
+    if not nestedFolderUpload:
+        resultFiles = [
+            os.path.join(path, file)
+            for file in resultFiles
+            if os.path.isfile(os.path.join(path, file))
+        ]
 
-        media = MediaFileUpload(path,mimetype=mimetype,resumable=True)
-        gfile = (
-            service.files()
-            .create(body=fileMetadata, media_body=media, fields="id,name")
-            .execute()
-        )
-        print("{gfile['name']}uploaded successfully... ")
-        return
+    for file in resultFiles:
 
-def uploadFolder(path,dirName=None):
+        if os.path.isdir(file):
+            print("under contruction")
+        elif os.path.isfile(file):
+            uploadFile(file, folder_id)
 
-    # create folder                                      
-       fileMetadata = {                                         "name": os.path.split(path)[-1] if dirName == None else dirName,                                          "mimeType": "application/vnd.google-apps.folder",                                                         "parents": [root_id] if dirName == None else [],                                                      }                                                    
-        file = service.files().create(body=fileMetadata, fields="id").execute()                                                                                        # get the folder id                            
-        folder_id = file.get("id")
-
-        os.chdir(path)
-        resultFiles = os.listdir()
-        #need to add env vars
-        nestedFolderUpload = False
-
-        if not nestedFolderUpload :
-           resultFiles =  [file for file in resultFiles  if os.path.isfile(file)]
-
-
-        with concurrent.futures.ThreadPoolExecuter() as executer :
-            [executer.submit(uploadFile,*(file,folder_id))for file in resultFiles]
-
-
-
-
-
-
-                """
-                print(f"Uploading {file}...")
-                fileMetadata = {"name": file, "parents": [folder_id]}
-                mimetype = mimetypes.guess_type(file)[0]
-                media = MediaFileUpload(file, mimetype=mimetype, resumable=True)
-                gfile = (
-                    service.files()
-                    .create(body=fileMetadata, media_body=media, fields="id")
-                    .execute()
-                )
-                if gfile:
-                    print(f"{file} uploaded sucessfully")
-"""
 
 def cloneFile(real_file_id, root_folder_id=None):
     service = Create_Service(CRENDS_FILE, API_NAME, API_VERSION, SCOPES)
@@ -198,7 +203,7 @@ def cloneFolder(real_file_id, root_folder_id=None):
 
     folder = service.files().create(body=fileMetadata, fields="id").execute()
 
-#    query = f"parents = '{real_file_id}'"
+    #    query = f"parents = '{real_file_id}'"
     query = f"'{real_file_id}' in parents"
     result = search(service, query)
     for file in result:
@@ -212,4 +217,5 @@ def cloneFolder(real_file_id, root_folder_id=None):
             cloneFile(file[0], root_folder_id=folder["id"])
             files += 1
 
-   # print("{} folders {} files cloned successfully".format(folders, files))
+
+# print("{} folders {} files cloned successfully".format(folders, files))
