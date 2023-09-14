@@ -1,18 +1,15 @@
 import os
 import sys
-from api import (
-    uploadFile,
-    uploadFolder,
-    cloneFolder,
-    cloneFile,
-    getAccountInfo,
-    downloadFile,
-    downloadFolder,
-)
+from api import Drive
+
+
+drive = Drive()
+
+drive.clear()
 
 
 def driveInfo():
-    getAccountInfo()
+    drive.getAccountInfo()
 
 
 def getDriveLinkId(url: str):
@@ -39,9 +36,17 @@ def getDriveLinkId(url: str):
 
 def driveUpload(path: str):
     if os.path.isfile(path):
-        uploadFile(path=path)
+        uploaded_files = drive.uploadFile(path=path)
     if os.path.isdir(path):
-        uploadFolder(path=path)
+        uploaded_files = drive.uploadFolder(path=path)
+    drive.clear()
+    print(f"Total Uploaded Files : {len(uploaded_files)}\n")
+    
+    drive.printFiles(uploaded_files,"Uploaded")
+
+    drive.uploaded_files = []
+
+
 
 
 def driveDownload(url: str):
@@ -52,10 +57,14 @@ def driveDownload(url: str):
         return
 
     if link_data[0] == "dir":
-        downloadFolder(link_data[1])
+        downloaded_files = drive.downloadFolder(link_data[1])
 
     elif link_data[0] == "file":
-        downloadFile(link_data[1])
+        downloaded_files = drive.downloadFile(link_data[1])
+
+    drive.printFiles(downloaded_files,"Downloaded") 
+    
+    drive.downloaded_files = []
 
 
 def driveClone(url: str):
@@ -66,10 +75,14 @@ def driveClone(url: str):
         return
 
     if link_data[0] == "dir":
-        cloneFolder(link_data[1])
+        cloned_files = drive.cloneFolder(link_data[1])
 
     elif link_data[0] == "file":
-        cloneFile(link_data[1])
+        cloned_files = drive.cloneFile(link_data[1])
+    
+    drive.printFiles(cloned_files,"Cloned")
+
+    drive.cloned_files = []
 
 
 def cli():

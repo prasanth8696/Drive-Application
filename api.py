@@ -1,4 +1,8 @@
 import os
+import sys
+import time
+import threading
+import itertools
 import io
 import mimetypes
 from pprint import pprint
@@ -29,6 +33,17 @@ class Drive:
     def __init__(self):
         self._service = Create_Service(CRENDS_FILE, API_NAME, API_VERSION, SCOPES)
 
+        self.done = True
+        self.uploaded_files = []
+        self.downloaded_files = []
+        self.cloned_files = []
+
+    def printFiles(self,files_list: list,desc: str) -> None :
+        self.clear()
+        print(f'Total {desc} Files : {len(files_list)}\n')
+        for file in files_list :
+            print(file)
+
     # Convert bytes to mega bytes
     def convert_bytes_to_megabytes(self, data_size: int):
         return data_size / (1024**2)
@@ -39,6 +54,16 @@ class Drive:
     def clear(self):
         clear_cmd = "cls" if os.name == "nt" else "clear"
         os.system(clear_cmd)
+
+
+    def animate(self,desc: str):
+        for c in itertools.cycle(["⢿", "⣻", "⣽", "⣾", "⣷", "⣯", "⣟", "⡿"]):
+            if self.done :
+                break
+            sys.stdout.write(f'\r\x1B[32m{desc} ' + c + '\x1B[37m\r')
+            sys.stdout.flush()
+            time.sleep(0.07)
+
 
 
     def search(self, service, query):
@@ -83,7 +108,13 @@ class Drive:
 
     def getAccountInfo(self):
 
+        self.done = False
+        t1 = threading.Thread(target=self.animate,args=[f"GETTING "])                                       
+
+        t1.start()
+
         accInfo = self._service.about().get(fields="*").execute()
+        self.done = True
 
         storageQuota = accInfo["storageQuota"]
         user = accInfo["user"]
@@ -98,6 +129,7 @@ class Drive:
 
         free = limit - used
         self.clear()
+
 
         print(f"Owner : {user['displayName']}")
         print(f"Email Address : {user['emailAddress']}\n")
@@ -114,6 +146,8 @@ class Drive:
 
     def uploadFile(self, path, rootFolderId=None):
 
+        self.clear()
+
         fileMetadata = {
             "name": os.path.split(path)[-1],
             "parents": [root_id] if rootFolderId is None else [rootFolderId],
@@ -122,16 +156,24 @@ class Drive:
         mimetype = mimetypes.guess_type(path)[0]
 
         media = MediaFileUpload(path, mimetype=mimetype, resumable=True)
+        self.done = False
+        t1 = threading.Thread(target=self.animate,args=["UPLOADING"])
+        t1.start()
         gfile = (
             self._service.files()
             .create(body=fileMetadata, media_body=media, fields="id,name")
             .execute()
         )
+        self.done = True
 
         print(f"{gfile['name']} uploaded successfully")
-        return
+        time.sleep(1)
+        return [gfile['name']]
 
     def uploadFolder(self, path, dirName=None):
+
+
+        self.clear()
 
         fileMetadata = {
             "name": os.path.split(path)[-1] if dirName == None else dirName,
@@ -156,11 +198,14 @@ class Drive:
         for file in resultFiles:
 
             if os.path.isdir(file):
-                print("under contruction")
+                self.uploadFolder(path)
             elif os.path.isfile(file):
-                self.uploadFile(file, folder_id)
+                self.uploaded_files.extend(self.uploadFile(file, folder_id))
+
+        return uploaded_files
 
     def cloneFile(self, real_file_id, root_folder_id=None):
+        self.clear()
 
         metadata = (
             self._service.files().get(fileId=real_file_id, fields="id,name").execute()
@@ -170,15 +215,20 @@ class Drive:
             "name": metadata["name"],
             "parents": [root_id] if root_folder_id is None else [root_folder_id],
         }
+        self.done = False                           
+        t1 = threading.Thread(target=self.animate,args=[f"CLONING "])
+        t1.start()
         file = (
             self._service.files().copy(fileId=real_file_id, body=fileMatadata).execute()
         )
+        self.done = True
 
         print(f"{metadata['name']} cloned successfully...")
+        time.sleep(1)
+        return [metadata['name']]
 
     def cloneFolder(self, real_file_id, root_folder_id=None):
-        files = 0
-        folders = 0
+        self.clear()
 
         metadata = (
             self._service.files().get(fileId=real_file_id, fields="id,name").execute()
@@ -197,22 +247,30 @@ class Drive:
         result = self.search(self._service, query)
         for file in result:
             if file[2] == "application/vnd.google-apps.folder":
-                print(f"Cloning {file[1]}")
+            
                 self.cloneFolder(file[0], root_folder_id=folder["id"])
-                folders += 1
+                
 
             else:
-                print(f"Cloning {file[1]}")
-                self.cloneFile(file[0], root_folder_id=folder["id"])
-                files += 1
+        
+                self.cloned_files.extend(self.cloneFile(file[0], root_folder_id=folder["id"]))
+
+        return self.cloned_files
+                
 
     # print("{} folders {} files cloned successfully".format(folders, files))
 
     def downloadFile(self, realFileId: str, savePath: str = SAVE_PATH):
+        self.clear()
 
         file_metadata = (
             self._service.files().get(fileId=realFileId, fields="id,name").execute()
         )
+
+        self.done = False
+        t1 = threading.Thread(target=self.animate,args=[f"DOWNLOADING "])
+
+        t1.start()
 
         request = self._service.files().get_media(fileId=realFileId)
 
@@ -230,10 +288,15 @@ class Drive:
         with open(os.path.join(savePath, file_metadata["name"]), "wb") as file:
             file.write(fh.getvalue())
 
+        self.done = True
+
         print(f"{file_metadata['name']} downloaded successfully")
+        time.sleep(1)
+
+        return [file_metadata['name']]
 
     def downloadFolder(self, realFileId: str, savePath: str = SAVE_PATH):
-
+        self.clear()
         fileMetadata = (
             self._service.files().get(fileId=realFileId, fields="id,name").execute()
         )
@@ -249,4 +312,6 @@ class Drive:
             if file[2] == "application/vnd.google-apps.folder":
                 self.downloadFolder(file[0], cur_path)
             else:
-                self.downloadFile(file[0], cur_path)
+                self.downloaded_files.extend(self.downloadFile(file[0], cur_path))
+
+        return self.downloaded_files

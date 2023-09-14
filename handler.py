@@ -1,5 +1,7 @@
-import pickle
 import os
+import time                                        
+
+import pickle
 from google_auth_oauthlib.flow import Flow, InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
@@ -72,3 +74,5 @@ def picInfo(percent):
         return progress[int(approx_percent[0])] + "  {:.2f} %".format(percent)
     if len(approx_percent) == 3:
         return progress[-1] + "  {:.2f} %".format(percent)
+
+
