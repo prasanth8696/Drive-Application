@@ -5,8 +5,6 @@ from api import Drive
 
 drive = Drive()
 
-drive.clear()
-
 
 def driveInfo():
     drive.getAccountInfo()
@@ -131,6 +129,25 @@ def cli():
 
 
 def main():
+
+    #check root folder is there or not
+
+    query = "name = 'ShanAppX'" 
+    result_files = drive.search(query)
+    
+
+    if not result_files :
+        fileMetadata = {
+                'name' : "ShanAppX",
+                'mimeType' : "application/vnd.google-apps.folder"
+                }
+        root = drive._service.files().create(body = fileMetadata,fields="id,name").execute()
+
+        os.environ["ROOT_ID"] = drive.root_id =  root['id']
+    else :
+        os.environ["ROOT_ID"] = drive.root_id = result_files[0][0]
+    drive.clear()
+    print(os.environ['ROOT_ID'])
     args = list(sys.argv)
     try:
 

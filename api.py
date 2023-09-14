@@ -20,7 +20,6 @@ API_VERSION = "v3"
 
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 
-root_id = "1GyWgVKNpDB6Pjm6a4HNC5PTmh4byS_IR"
 
 SAVE_PATH = os.environ.get("HOME") + "/gdriveFiles"
 
@@ -37,6 +36,7 @@ class Drive:
         self.uploaded_files = []
         self.downloaded_files = []
         self.cloned_files = []
+        self.root_id = os.environ.get("ROOT_ID",None)
 
     def printFiles(self,files_list: list,desc: str) -> None :
         self.clear()
@@ -66,7 +66,7 @@ class Drive:
 
 
 
-    def search(self, service, query):
+    def search(self, query):
         # search for the file
         result = []
         page_token = None
@@ -107,6 +107,7 @@ class Drive:
     # Getting information
 
     def getAccountInfo(self):
+        self.clear()
 
         self.done = False
         t1 = threading.Thread(target=self.animate,args=[f"GETTING "])                                       
@@ -150,7 +151,7 @@ class Drive:
 
         fileMetadata = {
             "name": os.path.split(path)[-1],
-            "parents": [root_id] if rootFolderId is None else [rootFolderId],
+            "parents": [self.root_id] if rootFolderId is None else [rootFolderId],
         }
 
         mimetype = mimetypes.guess_type(path)[0]
@@ -178,7 +179,7 @@ class Drive:
         fileMetadata = {
             "name": os.path.split(path)[-1] if dirName == None else dirName,
             "mimeType": "application/vnd.google-apps.folder",
-            "parents": [root_id] if dirName == None else [],
+            "parents": [self.root_id] if dirName == None else [],
         }
         file = self._service.files().create(body=fileMetadata, fields="id").execute()
 
@@ -213,7 +214,7 @@ class Drive:
 
         fileMatadata = {
             "name": metadata["name"],
-            "parents": [root_id] if root_folder_id is None else [root_folder_id],
+            "parents": [self.root_id] if root_folder_id is None else [root_folder_id],
         }
         self.done = False                           
         t1 = threading.Thread(target=self.animate,args=[f"CLONING "])
@@ -227,6 +228,9 @@ class Drive:
         time.sleep(1)
         return [metadata['name']]
 
+
+
+
     def cloneFolder(self, real_file_id, root_folder_id=None):
         self.clear()
 
@@ -236,7 +240,7 @@ class Drive:
 
         fileMetadata = {
             "name": metadata["name"],
-            "parents": [root_id] if root_folder_id is None else [root_folder_id],
+            "parents": [self.root_id] if root_folder_id is None else [root_folder_id],
             "mimeType": "application/vnd.google-apps.folder",
         }
 
@@ -244,7 +248,8 @@ class Drive:
 
         #    query = f"parents = '{real_file_id}'"
         query = f"'{real_file_id}' in parents"
-        result = self.search(self._service, query)
+        result = self.search(query)
+        print(result)
         for file in result:
             if file[2] == "application/vnd.google-apps.folder":
             
@@ -302,7 +307,7 @@ class Drive:
         )
 
         query = f"'{realFileId}' in parents"
-        getResults = self.search(self._service, query)
+        getResults = self.search(query)
 
         cur_path = os.path.join(savePath, fileMetadata["name"])
         if not os.path.exists(cur_path):
