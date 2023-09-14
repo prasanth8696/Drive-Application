@@ -18,14 +18,14 @@ def driveInfo():
 def getDriveLinkId(url: str):
 
     try:
-        #For folder link
+        # For folder link
         if "folders" in url:
             return ("dir", url.split("/")[-1])
-        #for Download link
+        # for Download link
         elif "file" in url and "export" in url:
             return ("file", url.split("?")[-1].split("&")[0][3:])
 
-        #For Webview link
+        # For Webview link
         elif "file" in url and "view" in url:
             return ("file", url.split("/")[-2])
     except IndexError:
@@ -140,9 +140,7 @@ def main():
             driveUpload(path)
 
         elif "-c" in args or "--clone" in args:
-            index = (
-                args.index("-c") if args.count("-c") == 1 else args.index("--clone")
-            )
+            index = args.index("-c") if args.count("-c") == 1 else args.index("--clone")
             link = args[index + 1]
 
             driveClone(link)

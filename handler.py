@@ -47,3 +47,28 @@ def Create_Service(client_secret_file, api_name, api_version, *scopes):
 def convert_to_RFC_datetime(year=1900, month=1, day=1, hour=0, minute=0):
     dt = datetime.datetime(year, month, day, hour, minute, 0).isoformat() + "Z"
     return dt
+
+
+def picInfo(percent):
+
+    approx_percent = str(percent).split(".")[0]
+    progress = [
+        "[□ □ □ □ □ □ □ □ □ □]",
+        "[■ □ □ □ □ □ □ □ □ □]",
+        "[■ ■ □ □ □ □ □ □ □ □]",
+        "[■ ■ ■ □ □ □ □ □ □ □]",
+        "[■ ■ ■ ■ □ □ □ □ □ □]",
+        "[■ ■ ■ ■ ■ □ □ □ □ □]",
+        "[■ ■ ■ ■ ■ ■ □ □ □ □]",
+        "[■ ■ ■ ■ ■ ■ ■ □ □ □]",
+        "[■ ■ ■ ■ ■ ■ ■ ■ □ □]",
+        "[■ ■ ■ ■ ■ ■ ■ ■ ■ □]",
+        "[■ ■ ■ ■ ■ ■ ■ ■ ■ ■]",
+    ]
+
+    if len(approx_percent) == 1:
+        return progress[0] + "  {:.2f} %".format(percent)
+    if len(approx_percent) == 2:
+        return progress[int(approx_percent[0])] + "  {:.2f} %".format(percent)
+    if len(approx_percent) == 3:
+        return progress[-1] + "  {:.2f} %".format(percent)
