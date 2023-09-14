@@ -95,7 +95,7 @@ def search(service, query):
 def uploadProgress(gfile):
     response = None
 
-    while not response :
+    while not response:
         status, response = gfile.next_chunk()
 
         if status:
@@ -154,7 +154,8 @@ def uploadFile(path, rootFolderId=None):
     media = MediaFileUpload(path, mimetype=mimetype, resumable=True)
     gfile = (
         service.files()
-        .create(body=fileMetadata, media_body=media, fields="id,name").execute()
+        .create(body=fileMetadata, media_body=media, fields="id,name")
+        .execute()
     )
 
     print(f"{gfile['name']} uploaded successfully")
@@ -256,12 +257,12 @@ def downloadFile(realFileId: str, savePath: str = SAVE_PATH):
         downloader,initial=1, desc="File Downloading... "
     ) as progressBar:
     """
-    while not response :
+    while not response:
         status, response = downloader.next_chunk()
 
         print(status.progress() * 100)
 
-#        progressBar.update(int(status.progress()) * 100)
+    #        progressBar.update(int(status.progress()) * 100)
 
     with open(os.path.join(savePath, file_metadata["name"]), "wb") as file:
         file.write(fh.getvalue())
@@ -269,25 +270,20 @@ def downloadFile(realFileId: str, savePath: str = SAVE_PATH):
     print(f"{file_metadata['name']} downloaded successfully")
 
 
-
-def downloadFolder(realFileId: str,savePath: str = SAVE_PATH) :
+def downloadFolder(realFileId: str, savePath: str = SAVE_PATH):
     service = Create_Service(CRENDS_FILE, API_NAME, API_VERSION, SCOPES)
-    
-    fileMetadata = service.files().get(fileId=realFileId,fields='id,name').execute()
+
+    fileMetadata = service.files().get(fileId=realFileId, fields="id,name").execute()
 
     query = f"'{realFileId}' in parents"
-    getResults = search(service,query)
+    getResults = search(service, query)
 
-    cur_path = os.path.join(savePath,fileMetadata['name'])
-    if not os.path.exists(cur_path) :
+    cur_path = os.path.join(savePath, fileMetadata["name"])
+    if not os.path.exists(cur_path):
         os.mkdir(cur_path)
 
-    for file in getResults :
-        if file[2] == "application/vnd.google-apps.folder" :
-            downloadFolder(file[0],cur_path)
-        else :
-            downloadFile(file[0],cur_path)
-
-
-
-
+    for file in getResults:
+        if file[2] == "application/vnd.google-apps.folder":
+            downloadFolder(file[0], cur_path)
+        else:
+            downloadFile(file[0], cur_path)
