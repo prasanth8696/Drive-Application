@@ -92,21 +92,17 @@ def search(service, query):
     return result
 
 
-def upload_progress(gfile):
+def uploadProgress(gfile):
     response = None
 
-    while response is None:
+    while not response :
         status, response = gfile.next_chunk()
 
         if status:
-            data_size = convert_bytes_to_megabytes(status.progress())
-            if data_size >= 1024:
-                data_size /= 1024
-
-            print(f"File Uploaded {data_size}%")
-            time.sleep(2)
-        if gfile:
-            print(f"{gfile['name']} Uploaded successfully")  # temp
+            clear()
+            print(f"Uploaded {status.progress()}")
+    if gfile:
+        print(f"{gfile['name']} Uploaded successfully")  # temp
 
 
 # Getting information
@@ -158,8 +154,7 @@ def uploadFile(path, rootFolderId=None):
     media = MediaFileUpload(path, mimetype=mimetype, resumable=True)
     gfile = (
         service.files()
-        .create(body=fileMetadata, media_body=media, fields="id,name")
-        .execute()
+        .create(body=fileMetadata, media_body=media, fields="id,name").execute()
     )
 
     print(f"{gfile['name']} uploaded successfully")
@@ -261,7 +256,7 @@ def downloadFile(realFileId: str, savePath: str = SAVE_PATH):
         downloader,initial=1, desc="File Downloading... "
     ) as progressBar:
     """
-    while response is None:
+    while not response :
         status, response = downloader.next_chunk()
 
         print(status.progress() * 100)
@@ -280,7 +275,7 @@ def downloadFolder(realFileId: str,savePath: str = SAVE_PATH) :
     
     fileMetadata = service.files().get(fileId=realFileId,fields='id,name').execute()
 
-    query = f"{realFileId} in parents"
+    query = f"'{realFileId}' in parents"
     getResults = search(service,query)
 
     cur_path = os.path.join(savePath,fileMetadata['name'])
